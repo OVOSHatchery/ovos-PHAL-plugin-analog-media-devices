@@ -15,7 +15,7 @@ def package_files(directory):
 PLUGIN_ENTRY_POINT = 'ovos-PHAL-plugin-analog-input-devices=ovos_PHAL_plugin_analog_input_devices:AnalogInputDevicesPlugin'
 setup(
     name='ovos-PHAL-plugin-analog-input-devices',
-    version='0.0.2',
+    version='0.0.1',
     description='A volume control plugin for OpenVoiceOS hardware abstraction layer',
     url='https://github.com/OpenVoiceOS/ovos-PHAL-plugin-analog-input-devices',
     author='JarbasAi',

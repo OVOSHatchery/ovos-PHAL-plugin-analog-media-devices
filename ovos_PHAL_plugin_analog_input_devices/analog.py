@@ -1,6 +1,7 @@
 import subprocess
 import threading
 from distutils.spawn import find_executable
+from os.path import dirname, isfile
 
 from ovos_utils.configuration import read_mycroft_config
 from ovos_utils.log import LOG
@@ -11,18 +12,18 @@ from ovos_utils.parse import fuzzy_match, MatchStrategy, match_one
 # can also be used to force split a audio+video source into 2
 # see Playstation Eye for an example where we do not want mic feedback
 FINGERPRINTS = {
-    "Playstation Eye": {"card_name": 'USB Camera-B4.09.24.1',
-                        "card_type": "USB Audio",
-                        "icon": "pseye.png",
-                        "type": "audio"
-                        },
+    "Playstation Eye Mic": {"card_name": 'USB Camera-B4.09.24.1',
+                            "card_type": "USB Audio",
+                            "icon": f"{dirname(__file__)}/res/pseye.png",
+                            "type": "audio"
+                            },
     "Playstation Eye Camera": {"device_name": 'USB Camera-B4.09.24.1',
-                               "icon": "pseye.png",
+                               "icon": f"{dirname(__file__)}/res/pseye.png",
                                "type": "video"
                                },
     "USB Soundcard": {"card_name": 'USB PnP Sound Device',
                       "card_type": "USB Audio",
-                      "icon": "soundcard.png",
+                      "icon": f"{dirname(__file__)}/res/soundcard.png",
                       "type": "audio"
                       }
 }
@@ -33,9 +34,10 @@ class DeviceNotFound(FileNotFoundError):
 
 
 class AnalogInput(threading.Thread):
-    def __init__(self, device=None, name=None):
+    def __init__(self, device=None, name=None, icon=f"{dirname(__file__)}/res/soundcard.png"):
         super().__init__(daemon=True)
         self.device = None
+        self.icon = icon
         self.name = name
         self.running = False
         self.set_device(device)
@@ -68,8 +70,8 @@ class AnalogInput(threading.Thread):
 
 
 class AnalogVideo(AnalogInput):
-    def __init__(self, device=None, name=None, player="auto"):
-        super().__init__(device, name)
+    def __init__(self, device=None, name=None, player="auto", icon=f"{dirname(__file__)}/res/camera.png"):
+        super().__init__(device, name, icon=icon)
         self.stream = None
         self._player = player
 
@@ -156,8 +158,8 @@ class AnalogVideo(AnalogInput):
 
 
 class AnalogAudio(AnalogInput):
-    def __init__(self, device=None, name=None):
-        super().__init__(device, name)
+    def __init__(self, device=None, name=None, icon=f"{dirname(__file__)}/res/mic.png"):
+        super().__init__(device, name, icon=icon)
         self.card = None
         self.stream = None
         self.audio_player = None
@@ -165,6 +167,7 @@ class AnalogAudio(AnalogInput):
         self.set_device(device)
 
     def set_device(self, device):
+        self.device = device
         if device is None:
             self.set_device_index(0, 0)
         else:
@@ -267,10 +270,11 @@ class AnalogAudio(AnalogInput):
 
 
 class AnalogVideoAudio:
-    def __init__(self, audio_device=None, video_device=None, name=None, video_player="auto"):
-        self.video = AnalogVideo(video_device, player=video_player, name=name)
-        self.audio = AnalogAudio(audio_device, name=name)
+    def __init__(self, audio_device=None, video_device=None, name=None, video_player="auto", icon="rca.png"):
+        self.video = AnalogVideo(video_device, player=video_player, name=name, icon=icon)
+        self.audio = AnalogAudio(audio_device, name=name, icon=icon)
         self.name = name
+        self.icon = icon
 
     def start(self):
         self.audio.start()
@@ -291,12 +295,23 @@ def load_device(name, data):
     audio = data.get("audio_device")
     video = data.get("video_device")
     try:
+        icon = data.get("icon")
+        if icon:
+            if isfile(f"~/.local/share/icons/{icon}"):
+                icon = f"~/.local/share/icons/{icon}"
+            elif isfile(f"/usr/share/icons/{icon}"):
+                icon = f"/usr/share/icons/{icon}"
+            elif isfile(f"{dirname(__file__)}/res/{icon}"):
+                icon = f"{dirname(__file__)}/res/{icon}"
         if audio and video:
-            return AnalogVideoAudio(audio, video, name=name)
+            icon = icon or f"{dirname(__file__)}/res/rca.png"
+            return AnalogVideoAudio(audio, video, name=name, icon=icon)
         elif audio:
-            return AnalogAudio(audio, name=name)
+            icon = icon or f"{dirname(__file__)}/res/soundcard.png"
+            return AnalogAudio(audio, name=name, icon=icon)
         elif video:
-            return AnalogVideo(video, name=name)
+            icon = icon or f"{dirname(__file__)}/res/camera.png"
+            return AnalogVideo(video, name=name, icon=icon)
     except Exception as e:
         LOG.exception(f"Failed to load device: {name}")
 
@@ -328,7 +343,8 @@ def scan_audio_devices():
         for alias, data in FINGERPRINTS.items():
             if data.get("card_name", "[None]") in name and \
                     data.get("card_type", "[None]") in cardtype:
-                yield AnalogAudio(name, alias)
+                icon = data.get("icon", "soundcard.png")
+                yield AnalogAudio(name, alias, icon=icon)
                 break
         else:
             yield AnalogAudio(name, name)
@@ -342,7 +358,8 @@ def scan_devices():
             if data.get("type", "") != "video":
                 continue
             if data.get("device_name", "[None]") in name:
-                yield AnalogVideo(name, alias)
+                icon = data.get("icon", "camera.png")
+                yield AnalogVideo(name, alias, icon=icon)
                 break
         else:
             alias = name.split(" (")[0]
@@ -357,48 +374,33 @@ def scan_devices():
         yield d
 
 
-if __name__ == "__main__":
-    print("\n## scan analog input devices")
-    for dev in scan_devices():
-        print(repr(dev), dev.name)
-
-    print("\n## read from mycroft.conf")
-    # "Audio": {
-    #     "backends": {
-    #       "local": {
-    #         "type": "ovos_common_play",
-    #         "youtube_backend": "youtube-dl",
-    #         "active": true,
-    #         "analog_inputs": {
-    #           "Cassette Player": {
-    #             "audio_device": "USB PnP Sound Device",
-    #             "icon": "cassette.png"
-    #           },
-    #           "RCA": {
-    #             "audio_device": "USB2.0 PC CAMERA",
-    #             "video_device": "USB2.0 PC CAMERA",
-    #             "icon": "rca.png"
-    #           }
-    #         }
-    #       },
-    #       "simple": {
-    #         "type": "ovos_audio_simple",
-    #         "active": true
-    #       }
-    #     },
-    #     "default-backend": "local"
-    #   }
+def get_devices():
+    devices = {}
     for dev in load_from_config():
-        print(repr(dev), dev.name)
+        devices[repr(dev)] = dev
+    for dev in scan_devices():
+        if repr(dev) not in devices:
+            devices[repr(dev)] = dev
+    return devices.values()
 
-    # ## scan analog input devices
-    # AnalogVideo(/dev/video10) bcm2835-codec-decode
-    # AnalogVideo(/dev/video13) bcm2835-isp
-    # AnalogVideo(/dev/video2) Playstation Eye Camera
-    # AnalogVideoAudio(hw:3,0+/dev/video0) USB2.0 PC CAMERA
-    # AnalogAudio(hw:1,0) USB Soundcard
-    # AnalogAudio(hw:2,0) Playstation Eye
-    #
-    # ## read from mycroft.conf
-    # AnalogAudio(hw:1,0) Cassette Player
-    # AnalogVideoAudio(hw:3,0+/dev/video0) RCA
+
+def get_device_json():
+    device_data = {}
+    for d in get_devices():
+        if isinstance(d, AnalogAudio):
+            device_data[d.name] = {"icon": d.icon,
+                                   "audio": d.device}
+        elif isinstance(d, AnalogVideo):
+            device_data[d.name] = {"icon": d.icon,
+                                   "video": d.device}
+        elif isinstance(d, AnalogVideoAudio):
+            device_data[d.name] = {"icon": d.icon,
+                                   "audio": d.audio.device,
+                                   "video": d.video.device}
+    return device_data
+
+
+if __name__ == "__main__":
+    from pprint import pprint
+
+    pprint(get_device_json())
