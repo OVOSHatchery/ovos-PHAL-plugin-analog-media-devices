@@ -320,13 +320,8 @@ def load_from_config(devices=None):
     if not devices:
         try:
             config = read_mycroft_config()
-            config = config.get("Audio") or {}
-            for backend, data in config.get("backends", {}).items():
-                if not data.get("active"):
-                    continue
-                if data.get("type", "") == "ovos_common_play":
-                    devices = data.get("analog_inputs") or {}
-                    break
+            config = config.get("PHAL") or {}
+            devices = config.get("analog_devices") or {}
         except:
             devices = {}
 
@@ -336,6 +331,16 @@ def load_from_config(devices=None):
         device = load_device(name, data)
         if device:
             yield device
+
+
+def get_device_blacklist():
+    try:
+        config = read_mycroft_config()
+        config = config.get("PHAL") or {}
+        return config.get("analog_blacklist") or \
+               ['bcm2835-isp', 'bcm2835-codec-decode']
+    except:
+        return []
 
 
 def scan_audio_devices():
@@ -376,9 +381,12 @@ def scan_devices():
 
 def get_devices():
     devices = {}
+    blacklist = get_device_blacklist()
     for dev in load_from_config():
         devices[repr(dev)] = dev
     for dev in scan_devices():
+        if dev.name in blacklist:
+            continue
         if repr(dev) not in devices:
             devices[repr(dev)] = dev
     return devices.values()
