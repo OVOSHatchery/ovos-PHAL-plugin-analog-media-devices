@@ -1,8 +1,8 @@
-from ovos_plugin_manager.phal import PHALPlugin
-from os.path import join, dirname
 from mycroft_bus_client import Message
-from json_database import JsonConfigXDG
+from os.path import join, dirname
 from ovos_PHAL_plugin_analog_input_devices.analog import get_devices, get_device_json
+
+from ovos_plugin_manager.phal import PHALPlugin
 
 
 class AnalogInputDevicesPlugin(PHALPlugin):
@@ -14,18 +14,12 @@ class AnalogInputDevicesPlugin(PHALPlugin):
         self.audio_device = None
         self.video_device = None
 
-        self.bus.on("ovos.common_play.analog.get",
-                    self.handle_device_request)
-        self.bus.on("ovos.common_play.analog.play",
-                    self.handle_play)
-        self.bus.on("ovos.common_play.analog.pause",
-                    self.handle_pause)
-        self.bus.on("ovos.common_play.analog.resume",
-                    self.handle_resume)
-        self.bus.on("ovos.common_play.analog.stop",
-                    self.handle_stop)
-        self.bus.on("mycroft.stop",
-                    self.handle_stop)
+        self.bus.on("ovos.common_play.analog.get", self.handle_device_request)
+        self.bus.on("ovos.common_play.analog.play", self.handle_play)
+        self.bus.on("ovos.common_play.analog.pause", self.handle_pause)
+        self.bus.on("ovos.common_play.analog.resume", self.handle_resume)
+        self.bus.on("ovos.common_play.analog.stop", self.handle_stop)
+        self.bus.on("mycroft.stop", self.handle_stop)
 
     @property
     def devices(self):
@@ -67,6 +61,9 @@ class AnalogInputDevicesPlugin(PHALPlugin):
             self.paused = False
 
     def handle_stop(self, message):
+        self.stop()
+
+    def stop(self):
         if self.video_player:
             self.video_player.stop()
         if self.audio_player:
@@ -77,4 +74,12 @@ class AnalogInputDevicesPlugin(PHALPlugin):
         self.video_device = None
         self.paused = False
 
-
+    def shutdown(self):
+        self.stop()
+        self.bus.remove("ovos.common_play.analog.get", self.handle_device_request)
+        self.bus.remove("ovos.common_play.analog.play", self.handle_play)
+        self.bus.remove("ovos.common_play.analog.pause", self.handle_pause)
+        self.bus.remove("ovos.common_play.analog.resume", self.handle_resume)
+        self.bus.remove("ovos.common_play.analog.stop", self.handle_stop)
+        self.bus.remove("mycroft.stop", self.handle_stop)
+        super().shutdown()
