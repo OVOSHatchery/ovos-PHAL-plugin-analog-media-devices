@@ -1,13 +1,13 @@
 from mycroft_bus_client import Message
 from os.path import join, dirname
-from ovos_PHAL_plugin_analog_input_devices.analog import get_devices, get_device_json
+from ovos_PHAL_plugin_analog_media_devices.analog import get_devices, get_device_json
 
 from ovos_plugin_manager.phal import PHALPlugin
 
 
 class AnalogInputDevicesPlugin(PHALPlugin):
     def __init__(self, bus=None, config=None):
-        super().__init__(bus=bus, name="ovos-PHAL-plugin-analog-input-devices", config=config)
+        super().__init__(bus=bus, name="ovos-PHAL-plugin-analog-media-devices", config=config)
         self.video_player = None
         self.audio_player = None
         self.paused = False

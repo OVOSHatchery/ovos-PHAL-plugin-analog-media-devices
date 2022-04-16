@@ -1,4 +1,4 @@
-# ovos-PHAL-plugin - Analog Input Devices
+# ovos-PHAL-plugin - Analog Media Devices
 
 WIP
 
@@ -9,7 +9,7 @@ WIP
 
     print("\n## read from mycroft.conf")
     # "PHAL": {
-    #     "analog_inputs": {
+    #     "analog_medias": {
     #           "Cassette Player": {
     #             "audio_device": "USB PnP Sound Device",
     #             "icon": "cassette.png"

@@ -22,7 +22,7 @@ allow_unknown = False
 allow_unlicense = True
 allow_ambiguous = False
 
-pkg_name = "ovos-PHAL-plugin-analog-input-devices"
+pkg_name = "ovos-PHAL-plugin-analog-media-devices"
 
 
 class TestLicensing(unittest.TestCase):
