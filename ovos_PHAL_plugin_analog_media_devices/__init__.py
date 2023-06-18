@@ -1,4 +1,4 @@
-from mycroft_bus_client import Message
+from ovos_bus_client import Message
 from os.path import join, dirname
 from ovos_PHAL_plugin_analog_media_devices.analog import get_devices, get_device_json
 
